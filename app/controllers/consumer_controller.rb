@@ -1,9 +1,10 @@
 require 'pathname'
 
-require "openid"
+require 'openid'
 require 'openid/extensions/sreg'
 require 'openid/extensions/pape'
 require 'openid/store/filesystem'
+require 'openid/extensions/ax'
 
 class ConsumerController < ApplicationController
   layout nil
@@ -13,6 +14,7 @@ class ConsumerController < ApplicationController
   end
 
   def start
+    puts('-' * 50 + 'consumer#start');
     begin
       identifier = params[:openid_identifier]
       if identifier.nil?
@@ -45,8 +47,20 @@ class ConsumerController < ApplicationController
     if params[:force_post]
       oidreq.return_to_args['force_post']='x'*2048
     end
+
+    if params[:use_ax]
+      # Thanks: http://d.hatena.ne.jp/a_kimura/20100407/1270660711
+      ax = OpenID::AX::FetchRequest.new
+      ax.add(OpenID::AX::AttrInfo.new('http://axschema.org/contact/email', 'email', true))
+      ax.add(OpenID::AX::AttrInfo.new('http://axschema.org/namePerson/first', 'firstname', true))
+      ax.add(OpenID::AX::AttrInfo.new('http://axschema.org/namePerson/last', 'lastname', true))
+      oidreq.add_extension(ax)
+      oidreq.return_to_args['did_ax'] = 'y'
+    end
+
     return_to = url_for :action => 'complete', :only_path => false
-    realm = url_for :action => 'index', :id => nil, :only_path => false
+    # realm = url_for :action => 'index', :id => nil, :only_path => false # <- DOSEN'T WORK 'not under trust_root'
+    realm = return_to # by YC
     
     if oidreq.send_redirect?(realm, return_to, params[:immediate])
       redirect_to oidreq.redirect_url(realm, return_to, params[:immediate])
@@ -57,8 +71,13 @@ class ConsumerController < ApplicationController
 
   def complete
     # FIXME - url_for some action is not necessarily the current URL.
+    puts('-' * 50 + 'consumer#complete');
     current_url = url_for(:action => 'complete', :only_path => false)
-    parameters = params.reject{|k,v|request.path_parameters[k]}
+#    parameters = params.reject{|k,v|request.path_parameters[k]} # <- DOSEN'T WORK 'controller = null'
+    parameters = params;		# by YC
+    parameters.delete('controller');	# by YC
+    parameters.delete('action');	# by YC
+    puts('parameters=' + parameters.to_s);
     oidresp = consumer.complete(parameters, current_url)
     case oidresp.status
     when OpenID::Consumer::FAILURE
@@ -100,6 +119,19 @@ class ConsumerController < ApplicationController
         end
         flash[:pape_results] = pape_message
       end
+      if params[:did_ax]
+        ax_resp = OpenID::AX::FetchResponse.from_success_response(oidresp)
+        ax_message = 'axschema data was requested'
+        if !ax_resp || ax_resp.data.empty?
+          ax_message << ', but none was returned.'
+        else
+          ax_message << '. The following data were sent:'
+          ax_resp.data.each {|k,v|
+            ax_message << "<br/><b>#{k}</b>: #{v}"
+          }
+        end
+        flash[:ax_results] = ax_message
+      end
     when OpenID::Consumer::SETUP_NEEDED
       flash[:alert] = "Immediate request failed - Setup Needed"
     when OpenID::Consumer::CANCEL
@@ -120,3 +152,4 @@ class ConsumerController < ApplicationController
     return @consumer
   end
 end
+

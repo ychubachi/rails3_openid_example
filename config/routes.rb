@@ -1,5 +1,7 @@
 Rails3OpenidExample::Application.routes.draw do
   get "consumer/index"
+  get "consumer/start"
+  get "consumer/complete"
   root :to => 'consumer#index'
 
   # The priority is based upon order of creation:

@@ -14,7 +14,6 @@ class ConsumerController < ApplicationController
   end
 
   def start
-    puts('-' * 50 + 'consumer#start');
     begin
       identifier = params[:openid_identifier]
       if identifier.nil?
@@ -48,7 +47,7 @@ class ConsumerController < ApplicationController
       oidreq.return_to_args['force_post']='x'*2048
     end
 
-    if params[:use_ax]
+    if params[:use_ax]	# added by yc
       # Thanks: http://d.hatena.ne.jp/a_kimura/20100407/1270660711
       ax = OpenID::AX::FetchRequest.new
       ax.add(OpenID::AX::AttrInfo.new('http://axschema.org/contact/email', 'email', true))
@@ -60,7 +59,7 @@ class ConsumerController < ApplicationController
 
     return_to = url_for :action => 'complete', :only_path => false
     # realm = url_for :action => 'index', :id => nil, :only_path => false # <- DOSEN'T WORK 'not under trust_root'
-    realm = return_to # by YC
+    realm = return_to # by yc
     
     if oidreq.send_redirect?(realm, return_to, params[:immediate])
       redirect_to oidreq.redirect_url(realm, return_to, params[:immediate])
@@ -71,13 +70,11 @@ class ConsumerController < ApplicationController
 
   def complete
     # FIXME - url_for some action is not necessarily the current URL.
-    puts('-' * 50 + 'consumer#complete');
     current_url = url_for(:action => 'complete', :only_path => false)
 #    parameters = params.reject{|k,v|request.path_parameters[k]} # <- DOSEN'T WORK 'controller = null'
-    parameters = params;		# by YC
-    parameters.delete('controller');	# by YC
-    parameters.delete('action');	# by YC
-    puts('parameters=' + parameters.to_s);
+    parameters = params;		# by yc
+    parameters.delete('controller');	# by yc
+    parameters.delete('action');	# by yc
     oidresp = consumer.complete(parameters, current_url)
     case oidresp.status
     when OpenID::Consumer::FAILURE
@@ -119,7 +116,7 @@ class ConsumerController < ApplicationController
         end
         flash[:pape_results] = pape_message
       end
-      if params[:did_ax]
+      if params[:did_ax]	# by yc
         ax_resp = OpenID::AX::FetchResponse.from_success_response(oidresp)
         ax_message = 'axschema data was requested'
         if !ax_resp || ax_resp.data.empty?

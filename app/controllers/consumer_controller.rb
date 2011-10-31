@@ -71,10 +71,8 @@ class ConsumerController < ApplicationController
   def complete
     # FIXME - url_for some action is not necessarily the current URL.
     current_url = url_for(:action => 'complete', :only_path => false)
-#    parameters = params.reject{|k,v|request.path_parameters[k]} # <- DOSEN'T WORK 'controller = null'
-    parameters = params;		# by yc
-    parameters.delete('controller');	# by yc
-    parameters.delete('action');	# by yc
+#    parameters = params.reject{|k,v| request.path_parameters[k]} # <- DOSEN'T WORK 'controller = null'
+    parameters = params.reject{|k,v| request.path_parameters[:"#{k}"]} # by yc
     oidresp = consumer.complete(parameters, current_url)
     case oidresp.status
     when OpenID::Consumer::FAILURE

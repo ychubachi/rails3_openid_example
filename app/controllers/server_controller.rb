@@ -51,47 +51,14 @@ class ServerController < ApplicationController
   private
 
   def render_xrds(types)
-    type_str = ""
-    types.each { |uri|
-      type_str += "<Type>#{uri}</Type>\n      "
-    }
-
-    yadis = <<EOS
-<?xml version="1.0" encoding="UTF-8"?>
-<xrds:XRDS
-    xmlns:xrds="xri://$xrds"
-    xmlns="xri://$xrd*($v*2.0)">
-  <XRD>
-    <Service priority="0">
-      #{type_str}
-      <URI>#{url_for(:controller => 'server', :only_path => false)}</URI>
-    </Service>
-  </XRD>
-</xrds:XRDS>
-EOS
-
-    response.headers['content-type'] = 'application/xrds+xml'
-    render :text => yadis
-
-    logger.debug yadis
+    @types = types
+    render :action => 'yadis', :content_type => 'application/xrds+xml', :format => 'xml'
   end
 
   def render_html
-    # content negotiation failed, so just render the user page
-    xrds_url = "/user/#{params[:username]}/xrds" # TODO: Can't we use url_for?
-    identity_page = <<EOS
-<html><head>
-<meta http-equiv="X-XRDS-Location" content="#{xrds_url}" />
-<link rel="openid.server" href="#{url_for :action => 'index'}" />
-</head><body><p>OpenID identity page for #{params[:username]}</p>
-</body></html>
-EOS
-    # Also add the Yadis location header, so that they don't have
-    # to parse the html unless absolutely necessary.
-    response.headers['X-XRDS-Location'] = xrds_url
-    render :text => identity_page
-
-    logger.debug identity_page
+    @xrds_url = "/user/#{params[:username]}/xrds" # TODO: Can't we use url_for?
+    response.headers['X-XRDS-Location'] = @xrds_url
+    render :action => 'xrds'
   end
 # **************************************************************** end XRDS
 

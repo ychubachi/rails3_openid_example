@@ -1,8 +1,28 @@
 Rails3OpenidExample::Application.routes.draw do
+  get "server/index"
+  post "server/index"
+  get "server/idp_xrds"
+  get "server/user_page"
+  get "server/user_xrds"
+  get "server/wsdl"
+
   get "consumer/index"
   get "consumer/start"
   get "consumer/complete"
   root :to => 'consumer#index'
+
+#  match '', :controller => 'login'
+  match 'user/:username',      :controller => 'server', :action => 'user_page'
+  match 'user/:username/xrds', :controller => 'server', :action => 'user_xrds'
+  match 'server/xrds',         :controller => 'server', :action => 'idp_xrds'
+  match 'server/decision',     :controller => 'server', :action => 'decision'
+
+  # Allow downloading Web Service WSDL as a file with an extension
+  # instead of a file named 'wsdl'
+#  match ':controller/service.wsdl', :controller => 'server', :action => 'wsdl'
+
+  # Install the default route as the lowest priority.
+  match ':controller/:action/:id'
 
   # The priority is based upon order of creation:
   # first created -> highest priority.

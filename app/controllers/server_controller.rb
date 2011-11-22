@@ -12,9 +12,6 @@ class ServerController < ApplicationController
   include OpenID::Server
   layout nil
 
-# **************************************************************** begin XRDS  
-  public
-
   # get /user/:username/
   def user_page
     # Yadis content-negotiation: we want to return the xrds if asked for.
@@ -26,68 +23,61 @@ class ServerController < ApplicationController
     if accept and accept.include?('application/xrds+xml')
       user_xrds
     else
-      render_html
+      @xrds_url = "/user/#{params[:username]}/xrds" # TODO: Can't we use url_for?
+      response.headers['X-XRDS-Location'] = @xrds_url
+      render :action => 'xrds'
     end
   end
 
   # get user/:username/xrds
   def user_xrds
-    types = [
+    @types = [
              OpenID::OPENID_2_0_TYPE,
              OpenID::OPENID_1_0_TYPE,
              OpenID::SREG_URI,
             ]
-    render_xrds(types)
+    render :action => 'yadis', :content_type => 'application/xrds+xml'
   end
 
   # get server/xrds
   def idp_xrds
-    types = [
+    @types = [
              OpenID::OPENID_IDP_2_0_TYPE,
             ]
-    render_xrds(types)
+    render :action => 'yadis', :content_type => 'application/xrds+xml'
   end
 
-  private
-
-  def render_xrds(types)
-    @types = types
-    render :action => 'yadis', :content_type => 'application/xrds+xml', :format => 'xml'
-  end
-
-  def render_html
-    @xrds_url = "/user/#{params[:username]}/xrds" # TODO: Can't we use url_for?
-    response.headers['X-XRDS-Location'] = @xrds_url
-    render :action => 'xrds'
-  end
-# **************************************************************** end XRDS
-
-# **************************************************************** begin Index
-  public
-
+  # get server/index
   def index
     oidreq = server.decode_request(params) # throws ProtocolError if the OpenID request is invalid.
-    raise "This is an OpenID server endpoint." unless oidreq # TODO: is this necessary?
+    logger.debug oidreq.to_yaml
 
     oidresp = nil
     if oidreq.kind_of?(CheckIDRequest)
+      logger.debug 'oidreq.kind_of?(CheckIDRequest)'
       identity = oidreq.identity
       if oidreq.id_select
+        logger.debug 'oidreq.id_select'
         if oidreq.immediate
-          oidresp = oidreq.answer(false)
+          logger.debug 'oidreq.immediate'
+          oidresp = oidreq.answer(false)		# oidresp => true
         elsif session[:username].nil?
+          logger.debug 'session[:username].nil?'
           # The user hasn't logged in.
           show_decision_page(oidreq)
           return
         else
+          logger.debug 'else'
           # Else, set the identity to the one the user is using.
           identity = url_for_user
         end
       end
 
       if oidresp
+        logger.debug 'oidresp'
         nil
-      elsif self.is_authorized(identity, oidreq.trust_root)
+      elsif is_authorized(identity, oidreq.trust_root)
+        logger.debug 'self.is_authorized(identity, oidreq.trust_root)'
         oidresp = oidreq.answer(true, nil, identity)
 
         # add the sreg response if requested
@@ -96,27 +86,33 @@ class ServerController < ApplicationController
         add_pape(oidreq, oidresp)
 
       elsif oidreq.immediate
+        logger.debug 'oidreq.immediate'
         server_url = url_for :action => 'index'
         oidresp = oidreq.answer(false, server_url)
 
       else
+        logger.debug 'else'
         show_decision_page(oidreq)
         return
       end
 
     else
+      logger.debug '! oidreq.kind_of?(CheckIDRequest)'
       oidresp = server.handle_request(oidreq)
     end
 
-    self.render_response(oidresp)
+    render_response(oidresp)
 
   rescue ProtocolError => e
-    # invalid openid request, so just display a page with an error message
     logger.debug 'ProtocolError:' + e.to_s
-    render :text => e.to_s, :status => 500
+    render :text => "This is an OpenID server endpoint.", :status => 500
   end
 
   private
+
+  def is_authorized(identity_url, trust_root)
+    return (session[:username] and (identity_url == url_for_user) and approved(trust_root))
+  end
 
   def show_decision_page(oidreq, message="Do you trust this site with your identity?")
     session[:last_oidreq] = oidreq
@@ -126,13 +122,7 @@ class ServerController < ApplicationController
       flash[:notice] = message
     end
 
-    render :template => 'server/decide', :layout => 'server'
-  end
-
-  protected # TODO: Why 'protected'?
-
-  def is_authorized(identity_url, trust_root)
-    return (session[:username] and (identity_url == url_for_user) and self.approved(trust_root))
+    render :action => 'decide', :layout => 'server'
   end
 # **************************************************************** end Index
 
@@ -170,7 +160,7 @@ class ServerController < ApplicationController
       oidresp = oidreq.answer(true, nil, identity)
       add_sreg(oidreq, oidresp)
       add_pape(oidreq, oidresp)
-      return self.render_response(oidresp)
+      return render_response(oidresp)
     end
   end
 
@@ -202,7 +192,7 @@ class ServerController < ApplicationController
     oidresp.add_extension(paperesp)
   end
 
-  protected # TODO: Why?
+  private
 
   def render_response(oidresp)
     if oidresp.needs_signing # TODO: Necessary?

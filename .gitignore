@@ -4,4 +4,7 @@ log/*.log
 tmp/
 .sass-cache/
 db/cstore
+db/openid-store
 example
+*~
+

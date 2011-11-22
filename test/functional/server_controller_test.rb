@@ -21,9 +21,4 @@ class ServerControllerTest < ActionController::TestCase
     assert_response :success
   end
 
-  test "should get wsdl" do
-    get :wsdl
-    assert_response :success
-  end
-
 end

@@ -104,8 +104,8 @@ class ServerController < ApplicationController
     render_response(oidresp)
 
   rescue ProtocolError => e
-    logger.debug 'ProtocolError:' + e.to_s
-    render :text => "This is an OpenID server endpoint.", :status => 500
+    flash[:error] = e.to_s
+    render :layout => 'server'
   end
 
   private

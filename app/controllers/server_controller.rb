@@ -25,6 +25,10 @@ class ServerController < ApplicationController
     else
       @xrds_url = "/user/#{params[:username]}/xrds" # TODO: Can't we use url_for?
       response.headers['X-XRDS-Location'] = @xrds_url
+
+      # This is for using delegate
+      # response.headers['X-XRDS-Location'] = "http://ychubachi.openid.ne.jp/?xrds=ychubachi"
+
       render :action => 'xrds'
     end
   end

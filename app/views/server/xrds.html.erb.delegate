@@ -1,0 +1,8 @@
+<html><head>
+<meta http-equiv="X-XRDS-Location" content="<%= @xrds_url %>" />
+  <link rel="openid.server"
+        href="http://ychubachi.openid.ne.jp/index.php/serve" />
+  <link rel="openid.delegate"
+        href="openid.delegate" href="http://ychubachi.openid.ne.jp/" />
+</head><body><p>OpenID identity page for <%= params[:username] %></p>
+</body></html>

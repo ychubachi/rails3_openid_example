@@ -114,6 +114,11 @@ class ServerController < ApplicationController
     return (session[:username] and (identity_url == url_for_user) and approved(trust_root))
   end
 
+  def approved(trust_root)
+    return false if session[:approvals].nil?
+    return session[:approvals].member?(trust_root)
+  end
+
   def show_decision_page(oidreq, message="Do you trust this site with your identity?")
     session[:last_oidreq] = oidreq
     @oidreq = oidreq
@@ -166,6 +171,16 @@ class ServerController < ApplicationController
 
   private
 
+  def url_for_user
+    if request.port == 80
+      url = "http://#{request.host}/user/#{session[:username]}"
+    else
+      url = "http://#{request.host}:#{request.port}/user/#{session[:username]}"
+    end
+    logger.debug url
+    return url
+  end
+
   def add_sreg(oidreq, oidresp)
     # check for Simple Registration arguments and respond
     sregreq = OpenID::SReg::Request.from_openid_request(oidreq)
@@ -191,8 +206,6 @@ class ServerController < ApplicationController
     paperesp.nist_auth_level = 0 # we don't even do auth at all!
     oidresp.add_extension(paperesp)
   end
-
-  private
 
   def render_response(oidresp)
     if oidresp.needs_signing # TODO: Necessary?

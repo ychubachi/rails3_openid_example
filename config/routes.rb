@@ -9,9 +9,12 @@ Rails3OpenidExample::Application.routes.draw do
   get "consumer/index"
   get "consumer/start"
   get "consumer/complete"
-  root :to => 'consumer#index'
 
-#  match '', :controller => 'login'
+  get "login/index"
+  get "login/submit"
+  get "login/logout"
+  root :to => 'login#index'
+
   match 'user/:username',      :controller => 'server', :action => 'user_page'
   match 'user/:username/xrds', :controller => 'server', :action => 'user_xrds'
   match 'server/xrds',         :controller => 'server', :action => 'idp_xrds'
